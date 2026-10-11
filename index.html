@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Online karte — skice ekrana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
+<style>
+  :root {
+    --paper: #F6F3EC;
+    --paper-2: #EFEAE0;
+    --card: #FFFFFF;
+    --ink: #14213D;
+    --ink-2: #2E3A57;
+    --muted: #667085;
+    --line: #DDD6C8;
+    --accent: #E8590C;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #FFF0E5;
+    --ok: #2B8A3E;
+    --ok-soft: #E6F4EA;
+    --warn: #B7791F;
+    --warn-soft: #FDF3DC;
+    --bad: #C92A2A;
+    --bad-soft: #FDECEC;
+    --note: #FFE27A;
+    --note-ink: #4A3B00;
+    --display: "DIN Condensed", "Barlow Condensed", "Arial Narrow", sans-serif;
+    --body: "Avenir Next", "Seravek", "IBM Plex Sans", "Helvetica Neue", sans-serif;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--paper-2);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  a { color: inherit; }
+  .num { font-variant-numeric: tabular-nums; }
+  .display { font-family: var(--display); letter-spacing: .02em; }
+
+  /* ---------- table of contents ---------- */
+  .toc {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
+    padding: 12px 24px; background: var(--ink); color: #fff;
+  }
+  .toc .title { font-family: var(--display); font-size: 22px; margin-right: 12px; padding-top: 4px; opacity: 1; border-bottom: 0; }
+  .toc a { text-decoration: none; opacity: .75; font-size: 14px; padding: 4px 0; border-bottom: 2px solid transparent; }
+  .toc a:hover, .toc a:focus-visible { opacity: 1; outline: none; border-bottom-color: var(--accent); }
+  .toc a.active { opacity: 1; border-bottom-color: var(--accent); }
+  .toc .sep { opacity: .35; }
+
+  /* ---------- boards ---------- */
+  main { padding: 32px 24px 64px; }
+  .board {
+    display: none;
+    gap: 40px; align-items: flex-start; justify-content: safe center; flex-wrap: wrap;
+    animation: enter .25s ease-out;
+  }
+  .board.active { display: flex; }
+  @keyframes enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  body.shot { background: #fff; }
+  body.shot .toc { display: none; }
+  body.shot main { padding: 32px; }
+  body.shot .board { animation: none; justify-content: flex-start; flex-wrap: nowrap; }
+  /* The admin window is 1180px wide; scale it down so the questions stay beside it. */
+  @media (min-width: 761px) and (max-width: 1660px) { body:not(.shot) .desk { zoom: .8; } }
+  @media (min-width: 761px) and (max-width: 1420px) { body:not(.shot) .desk { zoom: .68; } }
+
+  /* ---------- intro ---------- */
+  .intro { width: 100%; max-width: 760px; }
+  .intro .brand img { height: 64px; }
+  .intro h1 { font-family: var(--display); font-size: 52px; line-height: 1; margin: 22px 0 6px; }
+  .intro .sub { font-size: 18px; color: var(--ink-2); margin: 0 0 22px; }
+  .intro .warn { background: var(--accent-soft); border-left: 4px solid var(--accent); border-radius: 6px; padding: 14px 16px; font-size: 16px; }
+  .intro .warn b { display: block; font-size: 17px; margin-bottom: 2px; }
+  .intro h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 30px 0 10px; }
+  .paths { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .path { display: block; text-decoration: none; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; transition: transform .15s, box-shadow .15s; }
+  .path:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(20,33,61,.1); }
+  .path:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .path b { display: block; font-family: var(--display); font-size: 30px; line-height: 1; margin-bottom: 6px; }
+  .path span { display: block; color: var(--ink-2); }
+  .path em { display: inline-block; margin-top: 12px; font-style: normal; font-weight: 700; border-bottom: 2px solid var(--accent); }
+  .steps { margin: 0; padding-left: 22px; font-size: 16px; color: var(--ink-2); }
+  .steps li { margin-bottom: 8px; padding-left: 4px; }
+  .steps .chipq { background: var(--note); color: var(--note-ink); padding: 0 6px; border-radius: 3px; }
+
+  /* ---------- phone-sized screens ---------- */
+  @media (max-width: 760px) {
+    .toc { flex-wrap: nowrap; overflow-x: auto; padding: 10px 16px; gap: 16px; scrollbar-width: none; }
+    .toc::-webkit-scrollbar { display: none; }
+    .toc a, .toc .sep { flex: none; white-space: nowrap; }
+    .toc .title { font-size: 19px; margin-right: 0; }
+    body:not(.shot) main { padding: 16px 16px 48px; }
+    body:not(.shot) .board { flex-direction: column; flex-wrap: nowrap; align-items: center; gap: 20px; }
+    body:not(.shot) .notes { width: 100%; max-width: 560px; padding-top: 0; }
+    body:not(.shot) .phone { width: 100%; max-width: 390px; height: auto; min-height: 700px; border-width: 6px; border-radius: 34px; }
+    body:not(.shot) .board:has(.desk, .paper)::before {
+      content: "Ovaj ekran je za računar. Raširite dva prsta da ga uvećate.";
+      align-self: stretch; font-size: 13px; color: var(--muted); text-align: center;
+    }
+    .intro h1 { font-size: 40px; }
+    .paths { grid-template-columns: 1fr; }
+  }
+
+  .notes { width: 360px; flex: none; padding-top: 8px; }
+  .notes .tag { font-family: var(--display); font-size: 16px; color: var(--accent); letter-spacing: .08em; }
+  .notes h2 { font-family: var(--display); font-size: 40px; line-height: 1; margin: 4px 0 10px; }
+  .notes p { margin: 0 0 16px; color: var(--ink-2); }
+  .notes h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 18px 0 8px; }
+  .q { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .q li {
+    background: var(--note); color: var(--note-ink);
+    padding: 10px 12px; border-radius: 4px; font-size: 14px;
+    box-shadow: 0 1px 0 rgba(0,0,0,.08);
+  }
+  .q li b { font-family: var(--display); font-size: 16px; margin-right: 6px; }
+  .next { display: inline-block; margin-top: 18px; font-weight: 600; text-decoration: none; border-bottom: 2px solid var(--accent); }
+
+  /* ---------- phone ---------- */
+  .phone {
+    width: 390px; height: 844px; flex: none;
+    background: var(--paper); border-radius: 44px;
+    border: 10px solid #111; box-shadow: 0 20px 50px rgba(20,33,61,.18);
+    overflow: hidden; position: relative; display: flex; flex-direction: column;
+  }
+  .status { height: 34px; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 0 26px; font-size: 13px; font-weight: 600; }
+  .appbar { display: flex; align-items: center; justify-content: space-between; padding: 6px 18px 12px; flex: none; }
+  .brand { font-family: var(--display); font-size: 22px; line-height: 1; letter-spacing: .04em; }
+  .brand small { display: block; font-family: var(--body); font-size: 10px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
+  .brand img { display: block; height: 48px; width: auto; }
+  .brand img + small { margin-top: 4px; }
+  .pills { display: flex; gap: 6px; }
+  .pill { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+  .scroll { flex: 1; overflow: hidden; padding: 0 18px 18px; }
+  .back { display: flex; align-items: center; gap: 10px; padding: 0 18px 10px; flex: none; }
+  .back a { text-decoration: none; font-size: 22px; line-height: 1; }
+  .back .title { font-family: var(--display); font-size: 24px; line-height: 1; padding-top: 3px; }
+  .back .sub { font-size: 12px; color: var(--muted); }
+
+  h1.hero { font-family: var(--display); font-size: 46px; line-height: .95; margin: 14px 0 6px; }
+  .lede { color: var(--ink-2); margin: 0 0 18px; }
+  .field { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 14px; }
+  .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .field .val { font-size: 17px; font-weight: 600; }
+  .field.dashed { border-style: dashed; border-color: var(--warn); background: var(--warn-soft); }
+  .field.dashed label { color: var(--warn); }
+  .stack { display: grid; gap: 8px; }
+  .route { position: relative; }
+  .swap { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%; background: var(--ink); color: #fff; border: 0; font-size: 16px; }
+  .row2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
+  .btn {
+    display: block; width: 100%; text-align: center; text-decoration: none;
+    background: var(--accent); color: var(--accent-ink); border: 0; border-radius: var(--radius);
+    padding: 15px; font-weight: 700; font-size: 16px; cursor: pointer;
+  }
+  .btn:focus-visible, .dep:focus-visible, .toc a:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+  .btn.small { padding: 8px 12px; font-size: 13px; width: auto; display: inline-block; }
+  .muted { color: var(--muted); }
+  .tiny { font-size: 12px; }
+  .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 22px 0 8px; }
+  .popular { display: grid; gap: 0; border-top: 1px solid var(--line); }
+  .popular div { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .from { font-size: 12px; color: var(--muted); }
+  .from b { color: var(--accent); font-size: 15px; }
+
+  .dates { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 14px; }
+  .date { text-align: center; border-radius: 8px; padding: 6px 2px; background: var(--card); border: 1px solid var(--line); font-size: 12px; }
+  .date b { display: block; font-family: var(--display); font-size: 20px; line-height: 1.1; }
+  .date.sel { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .date span { color: var(--accent); font-weight: 600; }
+  .date.sel span { color: #FFB48A; }
+  .dep {
+    display: block; text-decoration: none; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; margin-bottom: 10px; transition: transform .15s, box-shadow .15s;
+  }
+  .dep:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(20,33,61,.08); }
+  .times { display: flex; align-items: baseline; gap: 8px; font-family: var(--display); font-size: 32px; line-height: 1; }
+  .times .arrow { font-size: 18px; color: var(--muted); }
+  .times sup { font-size: 13px; color: var(--muted); }
+  .dep .meta { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px; }
+  .price { text-align: right; }
+  .price s { color: var(--muted); font-size: 13px; display: block; }
+  .price b { font-family: var(--display); font-size: 28px; color: var(--accent); line-height: 1; }
+  .chip { white-space: nowrap; display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 600; }
+  .chip.promo { background: var(--accent-soft); color: var(--accent); }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.bad { background: var(--bad-soft); color: var(--bad); }
+  .chip.grey { background: var(--paper-2); color: var(--muted); }
+  .dep.off { opacity: .55; pointer-events: none; }
+
+  .timer { background: var(--ink); color: #fff; padding: 9px 18px; font-size: 13px; display: flex; justify-content: space-between; flex: none; }
+  .timer b { font-family: var(--display); font-size: 18px; letter-spacing: .05em; }
+  .summary { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin: 12px 0 14px; display: flex; justify-content: space-between; align-items: center; }
+  .summary .t { font-family: var(--display); font-size: 22px; line-height: 1; }
+  .check { display: flex; gap: 10px; font-size: 13px; margin: 14px 0; align-items: flex-start; }
+  .box { width: 20px; height: 20px; border: 2px solid var(--ink); border-radius: 4px; flex: none; display: grid; place-items: center; font-size: 13px; font-weight: 800; }
+  .total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .total b { font-family: var(--display); font-size: 32px; }
+  .cards { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+  .cards span { border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; color: var(--muted); background: var(--card); }
+
+  .bank { flex: 1; background: #E9ECEF; display: flex; flex-direction: column; }
+  .bank .bankbar { background: #495057; color: #fff; padding: 12px 18px; font-size: 13px; }
+  .bank .body { padding: 18px; display: grid; gap: 10px; }
+  .bank .ph { background: #fff; border: 1px solid #CED4DA; border-radius: 6px; padding: 12px; color: #868E96; font-size: 14px; }
+  .bank .merchant { background: #fff; border: 1px solid #CED4DA; border-radius: 6px; padding: 10px; display: flex; justify-content: center; }
+  .bank .merchant img { height: 40px; width: auto; }
+  .bank .stamp { border: 2px dashed #868E96; color: #495057; border-radius: 8px; padding: 12px; font-size: 13px; text-align: center; background: rgba(255,255,255,.6); }
+  .bank .pay { background: #343A40; color: #fff; text-align: center; padding: 14px; border-radius: 6px; font-weight: 700; text-decoration: none; display: block; }
+
+  .done { text-align: center; padding-top: 6px; }
+  .tick { width: 64px; height: 64px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-items: center; font-size: 34px; margin: 6px auto 10px; animation: pop .35s ease-out; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  body.shot .tick { animation: none; }
+  .stub { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); margin: 16px 0; text-align: left; overflow: hidden; }
+  .stub .top { padding: 14px; display: flex; justify-content: space-between; gap: 12px; }
+  .stub .perf { border-top: 2px dashed var(--line); margin: 0 10px; }
+  .stub .bottom { padding: 12px 14px; display: flex; justify-content: space-between; font-size: 13px; }
+  .stub .label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .notice { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 10px 12px; font-size: 13px; text-align: left; border-radius: 4px; margin-bottom: 12px; }
+
+  .qr { display: grid; grid-template-columns: repeat(25, 1fr); width: 96px; height: 96px; flex: none; }
+  .qr.big { width: 150px; height: 150px; }
+  .qr i { background: transparent; }
+  .qr i.on { background: var(--ink); }
+
+  /* ---------- paper (PDF ticket / manifest) ---------- */
+  .paper { width: 620px; min-height: 860px; background: #fff; box-shadow: 0 16px 40px rgba(20,33,61,.16); padding: 44px 48px; flex: none; position: relative; }
+  .paper .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid var(--ink); padding-bottom: 14px; }
+  .paper h1 { font-family: var(--display); font-size: 54px; line-height: .95; margin: 28px 0 4px; }
+  .paper .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin: 24px 0; }
+  .paper .k { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+  .paper .v { font-size: 17px; font-weight: 600; }
+  .paper .v.big { font-family: var(--display); font-size: 30px; font-weight: 400; }
+  .paper .qrwrap { display: flex; gap: 22px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+  .paper .rules { font-size: 12px; color: var(--ink-2); margin-top: 22px; padding-left: 18px; }
+  .paper .rules li { margin-bottom: 4px; }
+  .paper .foot { position: absolute; left: 48px; right: 48px; bottom: 32px; font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 8px; }
+
+  /* ---------- admin ---------- */
+  .desk {
+    width: 1180px; height: 820px; flex: none; background: var(--paper); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 20px 50px rgba(20,33,61,.18); display: grid; grid-template-rows: 36px 1fr; border: 1px solid #c9c2b4;
+  }
+  .chrome { background: #E4DED2; display: flex; align-items: center; gap: 8px; padding: 0 14px; }
+  .chrome i { width: 11px; height: 11px; border-radius: 50%; background: #c9c2b4; display: block; }
+  .chrome .url { margin-left: 16px; background: #fff; border-radius: 6px; padding: 3px 12px; font-size: 12px; color: var(--muted); width: 420px; }
+  .app { display: grid; grid-template-columns: 220px 1fr; min-height: 0; }
+  .side { background: var(--ink); color: #fff; padding: 20px 14px; display: flex; flex-direction: column; gap: 2px; }
+  .side .brand { background: #fff; border-radius: 8px; padding: 12px 12px 10px; margin: 0 0 22px; box-shadow: 0 1px 0 rgba(0,0,0,.2); }
+  .side .brand img { height: 62px; }
+  .side .brand small { margin: 8px 2px 0; padding-top: 7px; border-top: 1px solid var(--line); }
+  .side a { text-decoration: none; padding: 9px 10px; border-radius: 6px; font-size: 14px; color: #C9D1E4; }
+  .side a.on { background: rgba(255,255,255,.1); color: #fff; box-shadow: inset 3px 0 0 var(--accent); }
+  .side .user { margin-top: auto; font-size: 12px; color: #9AA6C2; padding: 0 10px; }
+  .work { padding: 22px 28px; overflow: hidden; min-width: 0; }
+  .work-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; }
+  .work-head h1 { font-family: var(--display); font-size: 38px; line-height: 1; margin: 0; }
+  .work-head p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .input { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font-size: 13px; color: var(--muted); }
+  table.t { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; }
+  table.t th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; padding: 10px 12px; background: #FBFAF6; border-bottom: 1px solid var(--line); }
+  table.t td { padding: 10px 12px; border-bottom: 1px solid #EEE9DE; vertical-align: middle; }
+  table.t tr:last-child td { border-bottom: 0; }
+  table.t td.time { font-family: var(--display); font-size: 20px; }
+  td:has(.bar), td.nw, #a3 td:nth-child(1), #a3 td:nth-child(4) { white-space: nowrap; }
+  .bar { width: 110px; height: 8px; border-radius: 99px; background: var(--paper-2); overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .bar.full i { background: var(--ok); }
+  .lnk { font-weight: 600; text-decoration: none; border-bottom: 1.5px solid var(--accent); font-size: 13px; }
+  .lnk.dim { border-bottom-color: var(--line); color: var(--muted); }
+  .split { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .panel h2 { font-family: var(--display); font-size: 26px; margin: 0 0 12px; line-height: 1; }
+  .panel .stack { gap: 10px; }
+  .panel .field { background: #FBFAF6; padding: 6px 12px; }
+  .panel .field .val { font-size: 15px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .kpi .k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .kpi .v { font-family: var(--display); font-size: 32px; line-height: 1.1; }
+  .stops { list-style: none; margin: 0; padding: 0; }
+  .stops li { display: grid; grid-template-columns: 28px 1fr 80px 80px; align-items: center; padding: 9px 0; border-bottom: 1px solid #EEE9DE; font-size: 14px; }
+  .stops li .dot { width: 12px; height: 12px; border-radius: 50%; border: 3px solid var(--ink); background: #fff; }
+  .stops li .time { font-family: var(--display); font-size: 20px; }
+  .matrix td, .matrix th { text-align: center !important; }
+  .matrix td.na { color: var(--muted); }
+  .matrix td b { color: var(--accent); display: block; }
+  .matrix td b.na { color: var(--muted); font-weight: 400; font-size: 11px; }
+  .matrix td.sel { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+  #a4 .stops li { grid-template-columns: 28px 1fr 96px 64px; }
+  .stops li.hd { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding-top: 0; }
+  .linetabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .linetabs a { text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); }
+  .linetabs a.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .manifest .paper { width: 820px; min-height: 0; padding: 36px 40px 60px; }
+  .boxcell { width: 18px; height: 18px; border: 2px solid var(--ink); border-radius: 3px; display: inline-block; }
+</style>
+</head>
+<body>
+
+<nav class="toc" aria-label="Ekrani">
+  <a class="title" href="#uvod">Online karte</a>
+  <a href="#k1">K1 Pretraga</a><a href="#k2">K2 Polasci</a><a href="#k3">K3 Putnik</a><a href="#k4">K4 Banka</a><a href="#k5">K5 Potvrda</a><a href="#k6">K6 Karta (PDF)</a>
+  <span class="sep">|</span>
+  <a href="#a1">A1 Polasci</a><a href="#a2">A2 Cenovnik</a><a href="#a3">A3 Karte</a><a href="#a4">A4 Linije</a><a href="#a5">A5 Spisak putnika</a>
+</nav>
+
+<main>
+
+<!-- ================= Uvod ================= -->
+<section class="board" id="uvod">
+  <div class="intro">
+    <div class="brand"><img src="logo.png" alt="Nikolić prevoz"></div>
+    <h1>Online prodaja karata</h1>
+    <p class="sub">Skice ekrana: kako bi izgledala kupovina karte preko interneta.</p>
+    <div class="warn"><b>Ovo su skice, a ne prava aplikacija.</b>Ništa ne može da se kupi niti plati. Imena, cene i vremena su izmišljeni, samo da se vidi kako bi to izgledalo.</div>
+
+    <h2>Šta možete da pogledate</h2>
+    <div class="paths">
+      <a class="path" href="#k1"><b>Kupac</b><span>Kako putnik kupuje kartu, na telefonu ili računaru. 6 ekrana.</span><em>Počnite ovde →</em></a>
+      <a class="path" href="#a1"><b>Admin</b><span>Šta vaš zaposleni vidi i radi u sistemu. 5 ekrana.</span><em>Pogledajte →</em></a>
+    </div>
+
+    <h2>Kako se gleda</h2>
+    <ol class="steps">
+      <li>Pored svakog ekrana (na telefonu ispod njega) piše šta taj ekran radi.</li>
+      <li><span class="chipq">Žuta polja</span> su pitanja o kojima odlučujemo zajedno.</li>
+      <li>Za sledeći ekran pritisnite „Sledeći ekran →“. Svi ekrani su i u traci na vrhu.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ================= K1 ================= -->
+<section class="board" id="k1">
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <header class="appbar">
+      <div class="brand"><img src="logo.png" alt="Nikolić prevoz"></div>
+      <div class="pills"><span class="pill">SR ▾</span><span class="pill">RSD ▾</span></div>
+    </header>
+    <div class="scroll">
+      <h1 class="hero">Kupite kartu<br>online</h1>
+      <p class="lede">Online karte su jeftinije nego na šalteru. Karta stiže na e-mail.</p>
+      <div class="stack">
+        <div class="route stack">
+          <div class="field"><label>Od</label><div class="val">Kladovo</div></div>
+          <div class="field"><label>Do</label><div class="val">Beč (Erdberg)</div></div>
+          <button class="swap" aria-label="Zameni smer">⇅</button>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Polazak</label><div class="val">pet, 18. dec</div></div>
+          <div class="field"><label>Povratak</label><div class="val">ned, 3. jan</div></div>
+        </div>
+        <div class="field"><label>Putnika</label><div class="val">1 putnik</div></div>
+        <a class="btn" href="#k2">Pretraži polaske</a>
+      </div>
+      <div class="section-label">Online cene</div>
+      <div class="popular">
+        <div><span>Kladovo → Beč</span><span class="from">od <b>49 €</b></span></div>
+        <div><span>Negotin → Beograd</span><span class="from">od <b>1.990 RSD</b></span></div>
+        <div><span>Zaječar → Beograd</span><span class="from">od <b>1.590 RSD</b></span></div>
+      </div>
+      <p class="tiny muted" style="margin-top:14px">Plaćanje karticom · Visa, Mastercard</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <div class="tag">KUPAC · 1/6</div>
+    <h2>Pretraga</h2>
+    <p>Kupac dolazi preko dugmeta „KUPOVINA" na postojećem sajtu. Bira relaciju, datum polaska, po želji datum povratka, i broj putnika. Jezik i valuta su gore desno.</p>
+    <h3>Pitanja za sastanak</h3>
+    <ol class="q">
+      <li><b>D1</b>Koje relacije i smerovi se nude online u pilotu?</li>
+      <li><b>D5</b>Povratna karta: na svim relacijama? Do kada mora povratak?</li>
+      <li><b>D11</b>Naplata u RSD, a EUR samo informativno?</li>
+      <li><b>D15</b>Jezici: SR, EN, DE, RO — ko prevodi?</li>
+      <li><b>D14</b>Dugme „KUPOVINA" na postojećem sajtu — ko i kada?</li>
+    </ol>
+    <a class="next" href="#k2">Sledeći ekran →</a>
+  </aside>
+</section>
+
+<!-- ================= K2 ================= -->
+<section class="board" id="k2">
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <header class="appbar"><div class="brand"><img src="logo.png" alt="Nikolić prevoz"></div></header>
+    <div class="back" style="padding-top:8px">
+      <a href="#k1" aria-label="Nazad">←</a>
+      <div><div class="title">Kladovo → Beč</div><div class="sub">polazak · 1 putnik · EUR</div></div>
+    </div>
+    <div class="scroll">
+      <div class="dates num">
+        <div class="date">sre<b>16</b><span>49 €</span></div>
+        <div class="date">čet<b>17</b><span>49 €</span></div>
+        <div class="date sel">pet<b>18</b><span>49 €</span></div>
+        <div class="date">sub<b>19</b><span>49 €</span></div>
+        <div class="date">ned<b>20</b><span>—</span></div>
+      </div>
+      <a class="dep" href="#k3">
+        <div class="times num">06:00 <span class="arrow">→</span> 17:30</div>
+        <div class="meta">
+          <div><div class="tiny muted">11 h 30 min · direktno</div><span class="chip promo">Još 3 online mesta</span></div>
+          <div class="price"><b>49 €</b></div>
+        </div>
+      </a>
+      <a class="dep" href="#k3">
+        <div class="times num">19:00 <span class="arrow">→</span> 06:30<sup>+1</sup></div>
+        <div class="meta">
+          <div><div class="tiny muted">11 h 30 min · direktno</div><span class="chip promo">Još 7 online mesta</span></div>
+          <div class="price"><b>49 €</b></div>
+        </div>
+      </a>
+      <div class="dep off">
+        <div class="times num">21:30 <span class="arrow">→</span> 09:00<sup>+1</sup></div>
+        <div class="meta">
+          <div><div class="tiny muted">Online mesta su rasprodata</div><span class="chip grey">Kupite na šalteru</span></div>
+          <div class="price"><b style="color:var(--muted)">—</b></div>
+        </div>
+      </div>
+      <p class="tiny muted">Cena je za jednog putnika u jednom smeru. Online prodaja se zatvara 2 sata pre polaska. Posle izbora polaska bira se povratak.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <div class="tag">KUPAC · 2/6</div>
+    <h2>Polasci</h2>
+    <p>Lista polazaka za izabrani dan sa online cenom i brojem preostalih online mesta. Kad se kvota potroši, polazak ostaje vidljiv, ali vodi na šalter.</p>
+    <h3>Pitanja za sastanak</h3>
+    <ol class="q">
+      <li><b>D2</b>Online kvota: koliko mesta po polasku ide online?</li>
+      <li><b>D2</b>Da li kupcu prikazujemo koliko je mesta ostalo?</li>
+      <li><b>D3</b>Kada se zatvara online prodaja? Šta biva sa neprodatim mestima?</li>
+    </ol>
+    <a class="next" href="#k3">Sledeći ekran →</a>
+  </aside>
+</section>
+
+<!-- ================= K3 ================= -->
+<section class="board" id="k3">
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <header class="appbar"><div class="brand"><img src="logo.png" alt="Nikolić prevoz"></div></header>
+    <div class="back" style="padding-top:8px">
+      <a href="#k2" aria-label="Nazad">←</a>
+      <div><div class="title">Podaci o putniku</div><div class="sub">korak 2 od 3</div></div>
+    </div>
+    <div class="timer"><span>Mesto čuvamo za vas još</span><b class="num">14:32</b></div>
+    <div class="scroll">
+      <div class="summary">
+        <div><div class="t num">Kladovo ⇄ Beč</div><div class="tiny muted">pet 18. dec 06:00 · ned 3. jan 19:00 · 1 putnik</div></div>
+        <a class="tiny" href="#k2">Izmeni</a>
+      </div>
+      <div class="stack">
+        <div class="field"><label>Ime i prezime</label><div class="val">Marko Petrović</div></div>
+        <div class="field"><label>Telefon</label><div class="val">+43 660 123 4567</div></div>
+        <div class="field"><label>E-mail (ovde stiže karta)</label><div class="val">marko@example.com</div></div>
+        <div class="field dashed"><label>Broj pasoša — samo ako granica traži</label><div class="val muted">?</div></div>
+      </div>
+      <div class="check"><span class="box">✓</span><span>Prihvatam <u>uslove prevoza</u> i <u>pravila otkazivanja</u>.</span></div>
+      <div class="total"><span>Ukupno, povratna</span><b class="num">89,00 €</b></div>
+      <a class="btn" href="#k4">Plati karticom</a>
+      <div class="cards"><span>VISA</span><span>MASTERCARD</span></div>
+      <p class="tiny muted" style="text-align:center">Plaćanje se obavlja na zaštićenoj stranici banke.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <div class="tag">KUPAC · 3/6</div>
+    <h2>Putnik</h2>
+    <p>Mesto se čuva 15 minuta dok kupac popunjava podatke i plaća — kod povratne karte i u polasku i u povratku. Ako ne plati, mesta se vraćaju u prodaju. Nalog nije potreban.</p>
+    <h3>Pitanja za sastanak</h3>
+    <ol class="q">
+      <li><b>D8</b>Koje podatke o putniku tražimo? Pasoš samo ako granica zahteva.</li>
+      <li><b>D8</b>Više putnika u jednoj kupovini — ime za svakog, kontakt jedan?</li>
+      <li><b>D9</b>Pravila otkazivanja i refundacije — tekst za uslove.</li>
+    </ol>
+    <a class="next" href="#k4">Sledeći ekran →</a>
+  </aside>
+</section>
+
+<!-- ================= K4 ================= -->
+<section class="board" id="k4">
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="bank">
+      <div class="bankbar">Stranica banke · 3D Secure</div>
+      <div class="body">
+        <div class="merchant"><img src="logo.png" alt="Nikolić prevoz"></div>
+        <div class="stamp">Ovaj ekran nije naš — izgled određuje banka.<br>Podaci o kartici nikad ne dolaze do našeg sistema.</div>
+        <div class="ph">Trgovac: Nikolić prevoz</div>
+        <div class="ph">Iznos: 10.430,80 RSD</div>
+        <div class="ph">Broj kartice</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="ph">MM/GG</div><div class="ph">CVV</div></div>
+        <a class="pay" href="#k5">Plati</a>
+        <div class="tiny" style="color:#868E96;text-align:center">Potvrda u aplikaciji vaše banke (3D Secure)</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">
+    <div class="tag">KUPAC · 4/6</div>
+    <h2>Plaćanje</h2>
+    <p>Kupac se preusmerava na stranicu banke (Intesa). Banka naplaćuje u dinarima (89 € ≈ 10.430,80 RSD po srednjem kursu NBS). Ako se kupac ne vrati, sistem sam proverava status kod banke.</p>
+    <h3>Pitanja za sastanak</h3>
+    <ol class="q">
+      <li><b>D11</b>Banka: Intesa? Ko pokreće zahtev za e-commerce i kada?</li>
+      <li><b>D11</b>Naplata uvek u RSD, a EUR samo informativno?</li>
+      <li><b>D11</b>Traži li banka rezervu ili limit jer se karte plaćaju unapred?</li>
+    </ol>
+    <a class="next" href="#k5">Sledeći ekran →</a>
+  </aside>
+</section>
+
+<!-- ================= K5 ================= -->
+<section class="board" id="k5">
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+    <header class="appbar"><div class="brand"><img src="logo.png" alt="Nikolić prevoz"></div></header>
+    <div class="scroll done">
+      <div class="tick">✓</div>
+      <h1 class="hero" style="font-size:40px;margin-top:0">Karta je kupljena</h1>
+      <p class="lede">Kartu i fiskalni račun smo poslali na <b>marko@example.com</b></p>
+      <div class="stub">
+        <div class="top">
+          <div>
+            <div class="label">Polazak</div>
+            <div class="display num" style="font-size:26px;line-height:1">06:00 Kladovo</div>
+            <div class="display num" style="font-size:26px;line-height:1.1">17:30 Beč</div>
+            <div class="tiny muted">pet, 18. dec 2026</div>
+          </div>
+          <div class="qr" data-seed="NP-2026-004817"></div>
+        </div>
+        <div class="perf"></div>
+        <div class="bottom"><span><span class="label">Putnik</span><br>Marko Petrović</span><span style="text-align:right"><span class="label">Karta</span><br><b class="num">NP-2026-004817</b></span></div>
+      </div>
+      <div class="notice"><b>Odštampajte kartu</b> i pokažite je vozaču pri ukrcavanju.</div>
+      <a class="btn" href="#k6">Preuzmi kartu (PDF)</a>
+    </div>
+  </div>
+  <aside class="notes">
+    <div class="tag">KUPAC · 5/6</div>
+    <h2>Potvrda</h2>
+    <p>Odmah posle plaćanja kupac vidi kartu. Karta (PDF) i fiskalni račun stižu mejlom. Isti podaci su u spisku putnika kod vozača.</p>
+    <h3>Pitanja za sastanak</h3>
+    <ol class="q">
+      <li><b>D6</b>Mora li karta da bude odštampana ili je dovoljna i na telefonu?</li>
+      <li><b>D14</b>Mejl kupcu: sa koje adrese i šta sve piše u njemu?</li>
+      <li><b>D12</b>Fiskalni račun u istom mejlu kao karta ili posebno?</li>
+    </ol>
+    <a class="next" href="#k6">Sledeći ekran →</a>
+  </aside>
+</section>
+
+<!-- ================= K6 ================= -->
+<section class="board" id="k6">
+  <div class="paper">
+    <div class="head">
+      <div class="brand"><img src="logo.png" alt="Nikolić prevoz" style="height:58px"><small>autobuska karta</small></div>
+      <div style="text-align:right" class="tiny muted">Karta br.<br><b class="num" style="font-size:16px;color:var(--ink)">NP-2026-004817</b></div>
+    </div>
+    <h1 class="num">Kladovo → Beč</h1>
+    <div class="muted">Linija Kladovo – Beč (Erdberg) · direktno</div>
+    <div class="grid">
+      <div><div class="k">Polazak</div><div class="v big num">pet 18.12.2026 · 06:00</div><div class="tiny muted">AS Kladovo, Dunavska 1 · peron 2</div></div>
+      <div><div class="k">Dolazak</div><div class="v big num">17:30</div><div class="tiny muted">Beč, Erdberg · Erdbergstraße 200A</div></div>
+      <div><div class="k">Putnik</div><div class="v">Marko Petrović</div></div>
+      <div><div class="k">Vrsta karte</div><div class="v">Povratna · polazak (1/2)</div><div class="tiny muted">povratak: ned 03.01.2027 · 19:00</div></div>
+      <div><div class="k">Cena</div><div class="v num">89,00 € · karticom</div><div class="tiny muted">naplaćeno 10.430,80 RSD</div></div>
+      <div><div class="k">Kupljeno</div><div class="v num">09.12.2026 21:14</div></div>
+    </div>
+    <div class="qrwrap">
+      <div class="qr big" data-seed="NP-2026-004817-pdf"></div>
+      <div>
+        <div class="k">Kontrola karte</div>
+        <div class="v">Pokažite ovu kartu vozaču.</div>
+        <div class="tiny muted" style="margin-top:6px">QR kod sadrži potpisan broj karte. Danas služi kao čitljiv broj, a kasnije omogućava skeniranje bez promene karata.</div>
+      </div>
+    </div>
+    <ul class="rules">
+      <li>Kako do stanice i gde je peron: karte.nikolicprevoz.rs/stanice/kladovo (mapa i uputstvo).</li>
+      <li>Karta važi samo za navedeni polazak i relaciju.</li>
+      <li>Javite se vozaču najkasnije 15 minuta pre polaska.</li>
+      <li>Otkazivanje i refundacija: prema uslovima prevoza na karte.nikolicprevoz.rs.</li>
+      <li>Fiskalni račun je poslat na e-mail uz ovu kartu.</li>
+    </ul>
+    <div class="foot"><span>Nikolić prevoz · Negotin · +381 19 3 544 767</span><span>karte.nikolicprevoz.rs</span></div>
+  </div>
+  <aside class="notes">
+    <div class="tag">KUPAC · 6/6</div>
+    <h2>Karta (PDF)</h2>
+    <p>Karta koju kupac štampa i nosi vozaču. Broj karte i ime su isti kao u spisku putnika koji dobija vozač.</p>
+    <h3>Pitanja za sastanak</h3>
+    <ol class="q">
+      <li><b>D6</b>Šta vozač proverava na karti? Šta je obavezno da piše?</li>
+      <li><b>D6</b>Broj karte: redni bez rupa (NP-2026-000123) ili jedinstven kod (NP-7K3QX9)?</li>
+      <li><b>D6</b>Uputstvo za stanicu na karti: adresa, peron, mapa?</li>
+      <li><b>D9</b>Pravila koja idu na kartu (javljanje, prtljag, otkazivanje).</li>
+      <li><b>N9</b>Logo, boje, tačan naziv firme i kontakt za kartu.</li>
+    </ol>
+    <a class="next" href="#a1">Admin ekrani →</a>
+  </aside>
+</section>
+
+<!-- ================= A1 ================= -->
+<section class="board" id="a1">
+  <div class="desk">
+    <div class="chrome"><i></i><i></i><i></i><span class="url">karte.nikolicprevoz.rs/admin/polasci</span></div>
+    <div class="app">
+      <nav class="side" aria-label="Admin">
+        <div class="brand"><img src="logo.png" alt="Nikolić prevoz"><small>admin</small></div>
+        <a class="on" href="#a1">Polasci</a><a href="#a2">Cenovnik</a><a href="#a3">Karte</a><a href="#a4">Linije i red vožnje</a><a href="#a5">Spiskovi putnika</a><a href="#a1">Izveštaji</a><a href="#a1">Korisnici</a>
+        <div class="user">admin@nikolicprevoz.rs</div>
+      </nav>
+      <div class="work">
+        <div class="work-head">
+          <div><h1>Polasci</h1><p>Online prodaja po polasku · petak, 18. decembar 2026</p></div>
+          <div class="toolbar" style="margin:0"><span class="input">◂ pet, 18.12.2026 ▸</span><span class="input">Sve linije ▾</span></div>
+        </div>
+        <div class="kpis num">
+          <div class="kpi"><div class="k">Online karata danas</div><div class="v">30</div></div>
+          <div class="kpi"><div class="k">Prihod danas</div><div class="v">1.002 €</div><div class="tiny muted">+ 13.930 RSD</div></div>
+          <div class="kpi"><div class="k">Popunjenost kvote</div><div class="v">75%</div></div>
+          <div class="kpi"><div class="k">Čeka fiskalni račun</div><div class="v" style="color:var(--warn)">1</div></div>
+        </div>
+        <table class="t num">
+          <thead><tr><th>Polazak</th><th>Linija</th><th>Online prodato / kvota</th><th>Prodaja se zatvara</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="time">05:00</td><td>Negotin → Zaječar → Beograd</td><td><span class="bar"><i style="width:70%"></i></span>7 / 10 <a class="lnk dim" href="#a1">izmeni</a></td><td>03:00</td><td><span class="chip ok">Otvoreno</span></td><td><a class="lnk" href="#a5">Spisak</a> &nbsp; <a class="lnk dim" href="#a1">Otkaži polazak</a></td></tr>
+            <tr><td class="time">06:00</td><td>Kladovo → Beč</td><td><span class="bar full"><i style="width:100%"></i></span>10 / 10</td><td>04:00</td><td><span class="chip grey">Rasprodato</span></td><td><a class="lnk" href="#a5">Spisak</a></td></tr>
+            <tr><td class="time">14:00</td><td>Beograd → Zaječar → Negotin</td><td class="muted">ne prodaje se online</td><td>—</td><td><span class="chip grey">Nije online</span></td><td></td></tr>
+            <tr><td class="time">19:00</td><td>Kladovo → Beč</td><td><span class="bar"><i style="width:25%"></i></span>3 / 12 <span class="chip warn">kvota +2</span></td><td>17:00</td><td><span class="chip ok">Otvoreno</span></td><td><a class="lnk" href="#a5">Spisak</a> &nbsp; <a class="lnk dim" href="#a1">Otkaži polazak</a></td></tr>
+            <tr><td class="time">21:30</td><td>Kladovo → Beč</td><td><span class="bar full"><i style="width:100%"></i></span>10 / 10</td><td>19:30</td><td><span class="chip grey">Rasprodato</span></td><td><a class="lnk" href="#a5">Spisak</a></td></tr>
+            <tr><td class="time">22:00</td><td>Donji Milanovac → Wiener Neudorf</td><td><span class="bar"><i style="width:0%"></i></span>0 / 6</td><td>20:00</td><td><span class="chip bad">Otkazan</span></td><td><span class="tiny muted">putnici obavešteni · 0 refundacija</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">
+    <div class="tag">ADMIN · 1/5</div>
+    <h2>Polasci</h2>
+    <p>Početni ekran admina: koliko je online karata prodato po polasku, kada se prodaja zatvara i spisak putnika za vozača. Admin ovde menja kvotu jednog polaska, zatvara prodaju ranije ili otkazuje polazak.</p>
+    <h3>Pitanja za sastanak</h3>
+    <ol class="q">
+      <li><b>D10</b>Ko je admin (novi zaposleni?) i šta radi svaki dan? Koje uloge?</li>
+      <li><b>D2</b>Admin povećava ili smanjuje kvotu jednog polaska — šta tada?</li>
+      <li><b>D3</b>Kad se online prodaja zatvori — kako stanica saznaje koliko mesta je slobodno?</li>
+      <li><b>D9</b>Otkazan polazak: ko obaveštava putnike, refund automatski ili ručno?</li>
+    </ol>
+    <a class="next" href="#a2">Sledeći ekran →</a>
+  </aside>
+</section>
+
+<!-- ================= A2 ================= -->
+<section class="board" id="a2">
+  <div class="desk">
+    <div class="chrome"><i></i><i></i><i></i><span class="url">karte.nikolicprevoz.rs/admin/cenovnik/negotin-beograd</span></div>
+    <div class="app">
+      <nav class="side" aria-label="Admin">
+        <div class="brand"><img src="logo.png" alt="Nikolić prevoz"><small>admin</small></div>
+        <a href="#a1">Polasci</a><a class="on" href="#a2">Cenovnik</a><a href="#a3">Karte</a><a href="#a4">Linije i red vožnje</a><a href="#a5">Spiskovi putnika</a><a href="#a1">Izveštaji</a><a href="#a1">Korisnici</a>
+        <div class="user">admin@nikolicprevoz.rs</div>
+      </nav>
+      <div class="work">
+        <div class="work-head">
+          <div><h1>Cenovnik</h1><p>Online cena za svaki par stanica. Kupac plaća tačno ovu cenu; prodate karte zadržavaju cenu po kojoj su kupljene.</p></div>
+        </div>
+        <div class="linetabs"><a class="on" href="#a2">Negotin → Beograd</a><a href="#a2">Beograd → Negotin</a><a href="#a2">Kladovo → Beč</a><a href="#a2">Beč → Kladovo</a></div>
+        <div class="split">
+          <div class="panel">
+            <h2>Negotin → Zaječar → Paraćin → Beograd · RSD</h2>
+            <table class="t matrix num">
+              <thead><tr><th>od \ do</th><th>Zaječar</th><th>Paraćin</th><th>Beograd</th></tr></thead>
+              <tbody>
+                <tr><th>Negotin</th><td>700<b>1.300</b></td><td>1.500<b>2.700</b></td><td class="sel">1.990<b>3.600</b></td></tr>
+                <tr><th>Zaječar</th><td class="na">—</td><td>1.000<b>1.800</b></td><td>1.590<b>2.900</b></td></tr>
+                <tr><th>Paraćin</th><td class="na">—</td><td class="na">—</td><td>1.200<b class="na">bez povratne</b></td></tr>
+              </tbody>
+            </table>
+            <p class="tiny muted" style="margin:10px 0 0">Gore: u jednom smeru · <b style="color:var(--accent)">narandžasto: povratna</b> (tamo i nazad) · „—": par se ne prodaje online. Kupcu iz inostranstva cena se prikazuje i u EUR po srednjem kursu NBS.</p>
+          </div>
+          <div class="panel">
+            <h2>Negotin → Beograd</h2>
+            <div class="stack">
+              <div class="grid2">
+                <div class="field"><label>U jednom smeru</label><div class="val num">1.990 RSD</div><div class="tiny muted">≈ 17 €</div></div>
+                <div class="field"><label>Povratna</label><div class="val num" style="color:var(--accent)">3.600 RSD</div><div class="tiny muted">≈ 31 €</div></div>
+              </div>
+              <div class="notice" style="margin:0"><b>Povratna</b> = Negotin → Beograd i nazad Beograd → Negotin. Jedna kupovina zauzima mesto u oba polaska — oba ili nijedno.</div>
+              <div class="field"><label>Važi</label><div class="val">od čuvanja · za nove kupovine</div></div>
+              <p class="tiny muted" style="margin:0">Poslednja izmena: 10.12.2026 · Ana (admin) · istorija izmena ↗</p>
+              <a class="btn" href="#a2">Sačuvaj cenu</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">
+    <div class="tag">ADMIN · 2/5</div>
+    <h2>Cenovnik</h2>
+    <p>Admin ručno unosi online cenu za svaki par stanica, u jednom smeru i povratnu. Nema akcija ni popusta: online cena je jedina cena koju kupac vidi. Povratna karta zauzima mesto i u povratnom polasku, u istoj kupovini.</p>
+    <h3>Pitanja za sastanak</h3>
+    <ol class="q">
+      <li><b>D4</b>Imate li za svaki par stanica cenu u jednom smeru i povratnu?</li>
+      <li><b>D11</b>Međunarodne linije: cena u RSD, kupcu prikaz i u EUR?</li>
+      <li><b>N2</b>Online cenovnik za pilot linije u našem šablonu — do kada?</li>
+    </ol>
+    <a class="next" href="#a3">Sledeći ekran →</a>
+  </aside>
+</section>
+
+<!-- ================= A3 ================= -->
+<section class="board" id="a3">
+  <div class="desk">
+    <div class="chrome"><i></i><i></i><i></i><span class="url">karte.nikolicprevoz.rs/admin/karte</span></div>
+    <div class="app">
+      <nav class="side" aria-label="Admin">
+        <div class="brand"><img src="logo.png" alt="Nikolić prevoz"><small>admin</small></div>
+        <a href="#a1">Polasci</a><a href="#a2">Cenovnik</a><a class="on" href="#a3">Karte</a><a href="#a4">Linije i red vožnje</a><a href="#a5">Spiskovi putnika</a><a href="#a1">Izveštaji</a><a href="#a1">Korisnici</a>
+        <div class="user">admin@nikolicprevoz.rs</div>
+      </nav>
+      <div class="work">
+        <div class="work-head">
+          <div><h1>Karte</h1><p>Pretraga po broju karte, imenu, telefonu ili e-mailu — za odgovore kupcima.</p></div>
+          <a class="btn small ghost" href="#a3">Izvoz za knjigovođu (Excel)</a>
+        </div>
+        <div class="toolbar"><span class="input" style="width:320px">🔍 Petrović, NP-2026-…, +43…</span><span class="input">Decembar 2026 ▾</span><span class="input">Svi statusi ▾</span></div>
+        <table class="t num">
+          <thead><tr><th>Karta</th><th>Putnik</th><th>Relacija · polazak</th><th>Iznos</th><th>Plaćanje</th><th>Fiskalni račun</th><th>Mejl</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><b>NP-2026-004817</b></td><td>Marko Petrović</td><td>Kladovo → Beč<br><span class="tiny muted">18.12. 06:00</span></td><td>49,00 €</td><td><span class="chip ok">Plaćeno</span></td><td><span class="chip ok">Izdat</span></td><td><span class="chip ok">Poslat</span></td><td><a class="lnk dim" href="#a3">Refund</a></td></tr>
+            <tr><td><b>NP-2026-004816</b></td><td>Jelena Ilić</td><td>Negotin → Beograd<br><span class="tiny muted">18.12. 05:00</span></td><td>1.990 RSD</td><td><span class="chip ok">Plaćeno</span></td><td><span class="chip warn">Na čekanju</span></td><td><span class="chip warn">Čeka račun</span></td><td><a class="lnk dim" href="#a3">Refund</a></td></tr>
+            <tr><td><b>NP-2026-004815</b></td><td>Stefan Jovanović</td><td>Zaječar → Beograd<br><span class="tiny muted">18.12. 05:00</span></td><td>1.590 RSD</td><td><span class="chip bad">Refundirano</span></td><td><span class="chip ok">Refundacija izdata</span></td><td><span class="chip ok">Poslat</span></td><td></td></tr>
+            <tr><td><b>NP-2026-004814</b></td><td>Ana Stojanović</td><td>Kladovo → Beč<br><span class="tiny muted">18.12. 19:00</span></td><td>49,00 €</td><td><span class="chip ok">Plaćeno</span></td><td><span class="chip ok">Izdat</span></td><td><span class="chip ok">Poslat</span></td><td><a class="lnk dim" href="#a3">Refund</a></td></tr>
+            <tr><td><b>NP-2026-004813</b></td><td>Nikola Marković</td><td>Kladovo → Beč<br><span class="tiny muted">18.12. 06:00</span></td><td>49,00 €</td><td><span class="chip grey">Isteklo</span></td><td>—</td><td>—</td><td></td></tr>
+          </tbody>
+        </table>
+        <p class="tiny muted" style="margin-top:10px">„Na čekanju": banka je potvrdila plaćanje, a fiskalni servis još nije odgovorio. Sistem pokušava ponovo sam — karta je kupcu već izdata.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">
+    <div class="tag">ADMIN · 3/5</div>
+    <h2>Karte</h2>
+    <p>Sve online karte sa stanjem plaćanja, fiskalnog računa i mejla. Odavde admin odgovara kupcima, pokreće refund i izvozi promet za knjigovođu.</p>
+    <h3>Pitanja za sastanak</h3>
+    <ol class="q">
+      <li><b>D9</b>Ko odobrava refund? Pun ili umanjen za naknadu? Zamena karte?</li>
+      <li><b>D12</b>Fiskalni račun: PDV, poreske oznake?</li>
+      <li><b>D13</b>Kakav izveštaj treba knjigovođi — dnevni/mesečni, po valuti, format?</li>
+      <li><b>D10</b>Ko odgovara kupcima (telefon, mejl) i šta treba da vidi?</li>
+    </ol>
+    <a class="next" href="#a4">Sledeći ekran →</a>
+  </aside>
+</section>
+
+<!-- ================= A4 ================= -->
+<section class="board" id="a4">
+  <div class="desk">
+    <div class="chrome"><i></i><i></i><i></i><span class="url">karte.nikolicprevoz.rs/admin/linije/negotin-beograd</span></div>
+    <div class="app">
+      <nav class="side" aria-label="Admin">
+        <div class="brand"><img src="logo.png" alt="Nikolić prevoz"><small>admin</small></div>
+        <a href="#a1">Polasci</a><a href="#a2">Cenovnik</a><a href="#a3">Karte</a><a class="on" href="#a4">Linije i red vožnje</a><a href="#a5">Spiskovi putnika</a><a href="#a1">Izveštaji</a><a href="#a1">Korisnici</a>
+        <div class="user">admin@nikolicprevoz.rs</div>
+      </nav>
+      <div class="work">
+        <div class="work-head">
+          <div><h1>Negotin → Beograd</h1><p>Linija je jedan smer · povratna linija: Beograd → Zaječar → Negotin · <a class="lnk" href="#a2">cene ove linije</a></p></div>
+          <a class="btn small" href="#a4">+ Nova linija</a>
+        </div>
+        <div class="linetabs"><a class="on" href="#a4">Negotin → Beograd</a><a href="#a4">Beograd → Negotin</a><a href="#a4">Kladovo → Beč</a><a href="#a4">Beč → Kladovo</a></div>
+        <div class="split" style="grid-template-columns: 1fr 1.15fr">
+          <div class="panel">
+            <h2>Stanice i vremena</h2>
+            <ul class="stops num">
+              <li class="hd"><span></span><span>Stanica</span><span>Od polaska</span><span>U 05:00</span></li>
+              <li><span class="dot"></span><span>Negotin, AS<br><span class="tiny muted">Vojvode Mišića 2 · peron 1</span></span><span>+0:00</span><span class="time">05:00</span></li>
+              <li><span class="dot"></span><span>Zaječar, AS<br><span class="tiny muted">Generala Gambete 2 · peron 4</span></span><span>+1:10</span><span class="time">06:10</span></li>
+              <li><span class="dot"></span><span>Paraćin, AS<br><span class="tiny muted">Bore Stankovića bb</span></span><span>+2:40</span><span class="time">07:40</span></li>
+              <li><span class="dot"></span><span>Beograd, BAS<br><span class="tiny muted">Đorđa Stanojevića 14</span></span><span>+5:15</span><span class="time">10:15</span></li>
+            </ul>
+            <p class="tiny muted" style="margin:10px 0 0"><a class="lnk" href="#a4">+ Dodaj stanicu</a> &nbsp; Redosled se menja prevlačenjem. Adresa i peron idu na kartu.</p>
+          </div>
+          <div class="panel">
+            <h2>Red vožnje</h2>
+            <table class="t num">
+              <thead><tr><th>Polazi</th><th>Dani</th><th>Važi</th><th>Online kvota</th></tr></thead>
+              <tbody>
+                <tr><td class="time">05:00</td><td>pon–pet</td><td>01.09.–31.05.</td><td><b>10</b> od 50</td></tr>
+                <tr><td class="time">14:00</td><td>svaki dan</td><td>01.09.–31.05.</td><td class="muted">nije online</td></tr>
+                <tr><td class="time">22:00</td><td>pet, ned</td><td>15.12.–15.01.</td><td><b>6</b> od 50</td></tr>
+              </tbody>
+            </table>
+            <p class="tiny muted" style="margin:10px 0 0"><a class="lnk" href="#a4">+ Dodaj polazak</a> &nbsp; Iz reda vožnje sistem pravi polaske 60 dana unapred. Izmena ne dira polaske koji već imaju prodate karte — za njih admin dobija upozorenje.</p>
+          </div>
+        </div>
+        <p class="tiny muted" style="margin-top:14px">Sve vrednosti su primer. Linije, stanice i red vožnje za pilot unosimo iz šablona koji klijent popuni.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">
+    <div class="tag">ADMIN · 4/5</div>
+    <h2>Linije i red vožnje</h2>
+    <p>Linija je jedan smer: redosled stanica i vreme od polaska sa prve stanice. Red vožnje kaže kada linija polazi, kojim danima, u kom periodu i koliko mesta ide online. Iz toga sistem pravi polaske.</p>
+    <h3>Pitanja za sastanak</h3>
+    <ol class="q">
+      <li><b>N1</b>Red vožnje za pilot linije u našem šablonu — do kada?</li>
+      <li><b>D1</b>Na kojim stanicama online putnik ulazi i izlazi?</li>
+    </ol>
+    <a class="next" href="#a5">Sledeći ekran →</a>
+  </aside>
+</section>
+
+<!-- ================= A5 ================= -->
+<section class="board manifest" id="a5">
+  <div class="paper">
+    <div class="head">
+      <div class="brand"><img src="logo.png" alt="Nikolić prevoz" style="height:52px"><small>spisak online putnika</small></div>
+      <div style="text-align:right" class="tiny muted num">Generisano 18.12.2026 03:00<br>online prodaja zatvorena</div>
+    </div>
+    <div class="grid num" style="grid-template-columns: repeat(4, 1fr); margin: 18px 0">
+      <div><div class="k">Polazak</div><div class="v big">05:00</div></div>
+      <div><div class="k">Datum</div><div class="v">pet 18.12.2026</div></div>
+      <div><div class="k">Linija</div><div class="v">Negotin → Beograd</div></div>
+      <div><div class="k">Online putnika</div><div class="v">7 od 10</div></div>
+    </div>
+    <table class="t num">
+      <thead><tr><th>#</th><th>Putnik</th><th>Telefon</th><th>Ulazi</th><th>Izlazi</th><th>Karta</th><th>Ukrcan</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Jelena Ilić</td><td>+381 64 111 2233</td><td>Negotin</td><td>Beograd</td><td>NP-…4816</td><td><span class="boxcell"></span></td></tr>
+        <tr><td>2</td><td>Miloš Đorđević</td><td>+381 63 456 7788</td><td>Negotin</td><td>Beograd</td><td>NP-…4809</td><td><span class="boxcell"></span></td></tr>
+        <tr><td>3</td><td>Ivana Kostić</td><td>+381 65 222 3344</td><td>Negotin</td><td>Paraćin</td><td>NP-…4802</td><td><span class="boxcell"></span></td></tr>
+        <tr><td>4</td><td>Dragan Nikolić</td><td>+381 60 987 6543</td><td>Zaječar</td><td>Beograd</td><td>NP-…4799</td><td><span class="boxcell"></span></td></tr>
+        <tr><td>5</td><td>Maja Stanković</td><td>+43 664 555 1212</td><td>Zaječar</td><td>Beograd</td><td>NP-…4791</td><td><span class="boxcell"></span></td></tr>
+        <tr><td>6</td><td>Petar Lazić</td><td>+381 62 333 4455</td><td>Zaječar</td><td>Beograd</td><td>NP-…4788</td><td><span class="boxcell"></span></td></tr>
+        <tr><td>7</td><td>Sanja Mitić</td><td>+49 151 2345 678</td><td>Paraćin</td><td>Beograd</td><td>NP-…4780</td><td><span class="boxcell"></span></td></tr>
+      </tbody>
+    </table>
+    <div class="grid" style="margin-top:28px">
+      <div><div class="k">Vozač</div><div style="border-bottom:1px solid var(--ink);height:26px"></div></div>
+      <div><div class="k">Registracija vozila</div><div style="border-bottom:1px solid var(--ink);height:26px"></div></div>
+    </div>
+    <p class="tiny muted">Putnik se ukrcava uz štampanu kartu sa istim brojem. Karta koja nije na spisku nije online karta za ovaj polazak.</p>
+  </div>
+  <aside class="notes">
+    <div class="tag">ADMIN · 5/5</div>
+    <h2>Spisak putnika</h2>
+    <p>Pravi se automatski kad se online prodaja za polazak zatvori. Vozač čekira putnike — tako se otkriva i kopirana karta, bez aplikacije za skeniranje.</p>
+    <h3>Pitanja za sastanak</h3>
+    <ol class="q">
+      <li><b>D7</b>Ko dobija spisak (vozač, stanica) i kako — mejl, štampa, Viber?</li>
+      <li><b>D7</b>Koliko pre polaska spisak mora da bude spreman?</li>
+      <li><b>D8</b>Traži li granica još neke podatke za međunarodne linije?</li>
+    </ol>
+    <a class="next" href="#uvod">Na početak →</a>
+  </aside>
+</section>
+
+</main>
+
+<script>
+  // Deterministic fake QR so screenshots are stable.
+  function fakeQr(el) {
+    const size = 25;
+    let seed = 0;
+    for (const ch of el.dataset.seed) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const finder = (r, c) => {
+      for (const [r0, c0] of [[0, 0], [0, size - 7], [size - 7, 0]]) {
+        const y = r - r0, x = c - c0;
+        if (y >= 0 && y < 7 && x >= 0 && x < 7) {
+          const ring = Math.min(y, x, 6 - y, 6 - x);
+          return ring !== 1;
+        }
+      }
+      return null;
+    };
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const cell = document.createElement("i");
+        const f = finder(r, c);
+        const on = f !== null ? f : rand() > 0.52;
+        if (on) cell.className = "on";
+        el.appendChild(cell);
+      }
+    }
+  }
+  document.querySelectorAll(".qr").forEach(fakeQr);
+
+  const params = new URLSearchParams(location.search);
+  if (params.has("shot")) document.body.classList.add("shot");
+
+  // On a phone, wide screens (admin, ticket) shrink to the screen width.
+  const narrow = matchMedia("(max-width: 760px)");
+  function fit() {
+    if (document.body.classList.contains("shot")) return;
+    const room = document.querySelector("main").clientWidth - 32;
+    document.querySelectorAll(".desk, .paper").forEach(el => {
+      el.style.zoom = "";
+      if (!narrow.matches || !el.closest(".board.active")) return;
+      if (el.offsetWidth > room) el.style.zoom = (room / el.offsetWidth).toFixed(3);
+    });
+  }
+
+  function show() {
+    const id = (location.hash || "#uvod").slice(1);
+    document.querySelectorAll(".board").forEach(b => b.classList.toggle("active", b.id === id));
+    document.querySelectorAll(".toc a").forEach(a => a.classList.toggle("active", a.getAttribute("href") === "#" + id));
+    fit();
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener("hashchange", show);
+  window.addEventListener("resize", fit);
+  show();
+</script>
+</body>
+</html>
